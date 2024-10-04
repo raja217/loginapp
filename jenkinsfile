@@ -1,0 +1,32 @@
+node {
+    stage('Sources') {
+        git '...repo_url'
+        sh `git  config`
+        sh `git pull`
+    }
+
+    stage('Install depandencies') {
+        sh 'npm install'
+    }
+
+    stage('Build JS') {
+        sh 'npm run build'
+    }
+
+
+     stage('Docker Build and Push') {
+            steps {
+                sh "docker build -t ${customimagename} ."
+                withDockerRegistry([credentialsId: 'credentials', url: '']) {
+                    sh 'docker push ${customimagename}'
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sshagent(['<ec2-ssh-credentials>']) {
+                    sh 'ssh -o StrictHostKeyChecking=no ubuntu@<ec2-ip> "docker pull <your-docker-image> && docker run -d -p 8082:80 <your-docker-image>"'
+                }
+            }
+        }
+}
